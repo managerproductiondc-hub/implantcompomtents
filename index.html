@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>P1 | Follow-Up Control (Cloud Sync)</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<style>
+:root{
+  --primary:#2563eb;
+  --primary-dark:#1e40af;
+  --bg:#f8fafc;
+  --card:#ffffff;
+  --border:#e5e7eb;
+  --text:#0f172a;
+  --muted:#64748b;
+  --danger:#dc2626;
+  --radius:14px;
+  --shadow:0 10px 25px rgba(0,0,0,.08);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Inter,system-ui;
+  background:linear-gradient(180deg,#eef5ff,#f8fafc);
+  color:var(--text);
+}
+
+.app{display:flex;min-height:100vh}
+
+/* SIDEBAR */
+.sidebar{
+  width:270px;
+  background:linear-gradient(180deg,var(--primary),var(--primary-dark));
+  color:#fff;
+  padding:24px 18px;
+}
+.brand{display:flex;gap:12px;align-items:center;margin-bottom:30px}
+.logo{
+  width:44px;height:44px;border-radius:12px;
+  background:#fff;color:var(--primary);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:20px;
+}
+.nav a{
+  display:flex;gap:12px;align-items:center;
+  padding:12px 14px;border-radius:10px;
+  text-decoration:none;color:#fff;font-weight:600;
+  opacity:.85;margin-bottom:4px;
+}
+.nav a.active,.nav a:hover{background:rgba(255,255,255,.2);opacity:1}
+
+/* MAIN */
+.main{flex:1;padding:26px;overflow:auto}
+.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.page-title{font-size:22px;font-weight:800}
+
+/* CLOUD STATUS INDICATOR */
+.sync-indicator{
+  display:flex;align-items:center;gap:8px;
+  background:#fff;padding:6px 14px;border-radius:30px;
+  border:1px solid var(--border);font-size:12px;font-weight:600;
+}
+.dot{width:8px;height:8px;border-radius:50%;background:#cbd5e1}
+.dot.online{background:#10b981;box-shadow:0 0 8px #10b981}
+
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px}
+.kpi{background:var(--card);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+.kpi h4{margin:0;font-size:13px;color:var(--muted)}
+.kpi .val{font-size:28px;font-weight:800;margin-top:6px;color:var(--primary)}
+
+.grid{display:grid;grid-template-columns:360px 1fr;gap:22px}
+.card{background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:22px}
+.card h3{margin:0 0 14px 0;font-size:16px}
+
+.form-row{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+label{font-size:13px;color:var(--muted);font-weight:600}
+input,select{padding:11px 14px;border-radius:10px;border:1px solid var(--border);font-size:14px;width:100%}
+
+.btn{
+  padding:10px 16px;border-radius:10px;border:none;
+  font-weight:700;font-size:13px;cursor:pointer;
+  display:inline-flex;gap:8px;align-items:center;transition:0.2s;
+}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-ghost{background:#fff;border:1px solid var(--border);color:var(--primary)}
+.btn-danger{background:#fee2e2;color:var(--danger)}
+
+.table-wrap{border:1px solid var(--border);border-radius:12px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+thead th{background:#f1f5f9;padding:14px;font-size:13px;color:var(--muted);text-align:left}
+tbody td{padding:14px;border-top:1px solid var(--border);font-size:14px}
+
+.rack-badge{background:#eff6ff;color:#2563eb;padding:4px 8px;border-radius:6px;font-weight:700;font-size:11px}
+
+@media(max-width:1100px){
+  .grid{grid-template-columns:1fr}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">P1</div>
+      <div><div style="font-weight:700">Follow-Up</div><div style="font-size:12px;opacity:.8">Control</div></div>
+    </div>
+    <nav class="nav">
+      <a class="active" href="index.html"><i class="fa fa-plus"></i> New Entry</a>
+      <a href="page2.html"><i class="fa fa-list-check"></i> Working Summary</a>
+      <a href="page3.html"><i class="fa fa-chart-line"></i> Analytics</a>
+      <a href="page4.html"><i class="fa fa-check-circle"></i> Completed</a>
+      <a href="page5.html"><i class="fa fa-triangle-exclamation"></i> Backlogs</a>
+      <a href="page6.html"><i class="fa fa-cubes"></i> WallDrop</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="page-header">
+      <div class="page-title">New Entry (Cloud Active)</div>
+      <div class="sync-indicator">
+        <div id="syncDot" class="dot"></div>
+        <span id="syncText">Syncing...</span>
+      </div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><h4>Total Cloud Jobs</h4><div class="val" id="kpiTotal">0</div></div>
+      <div class="kpi"><h4>Due Today</h4><div class="val" id="kpiToday">0</div></div>
+      <div class="kpi"><h4>Overdue</h4><div class="val" id="kpiOverdue">0</div></div>
+      <div class="kpi"><h4>Types</h4><div class="val" id="kpiTypes">0</div></div>
+    </div>
+
+    <div class="grid">
+      <section>
+        <div class="card">
+          <h3>Entry Form</h3>
+          <div class="form-row">
+            <label>Jobcard Number (Primary Key)</label>
+            <input id="jobcardInput" placeholder="Ex: J1001" oninput="checkDuplicate(); setCreatedTimeIfEmpty();">
+            <small id="dupWarn" style="display:none;color:var(--danger);font-size:11px;font-weight:600">⚠ Duplicate Jobcard detected</small>
+          </div>
+          <div class="form-row">
+            <label>Created Timestamp</label>
+            <input id="createdAt" readonly style="background:#f1f5f9;color:#64748b">
+          </div>
+          <div class="form-row">
+            <label>Type</label>
+            <select id="typeSelect" onchange="autoFollowDate()">
+              <option value="">Select Type</option>
+              <option>METAL</option>
+              <option>SPECIAL BITE BLOCK</option>
+              <option>BITE BLOCK</option>
+              <option>SPECIAL TRAY</option>
+              <option>JIG</option>
+              <option>TEETH SETTING WITH FRAME</option>
+              <option>TEETH SET</option>
+              <option>BODY TRIAL</option>
+              <option>ABUTMENT MILLING TRIAL</option>
+              <option>RESINTRVAL</option>
+              <option>COMPONENTS</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Follow-Up Date</label>
+            <input id="followDate" placeholder="DD/MM/YYYY HH:MM:SS">
+          </div>
+          <div style="display:flex;gap:10px;margin-top:16px">
+            <button class="btn btn-primary" onclick="submitEntry()" id="saveBtn"><i class="fa fa-cloud-arrow-up"></i> Save to Cloud</button>
+            <button class="btn btn-ghost" onclick="resetForm()">Reset</button>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
+            <h3 style="margin:0">Active Records (Global)</h3>
+            <button class="btn btn-ghost" onclick="exportExcel()"><i class="fa fa-file-excel"></i> Export</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Jobcard</th>
+                  <th>Type</th>
+                  <th>Follow-Up</th>
+                  <th style="text-align:right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script>
+const API_URL = "/api";
+let records = [];
+
+const FOLLOW_DAYS = {
+  "METAL":3, "SPECIAL BITE BLOCK":1, "BITE BLOCK":1, "SPECIAL TRAY":1, "JIG":1,
+  "TEETH SETTING WITH FRAME":3, "TEETH SET":3, "BODY TRIAL":1,
+  "ABUTMENT MILLING TRIAL":1, "RESINTRVAL":1, "COMPONENTS":3
+};
+
+// --- DATA HANDLING ---
+
+async function fetchCloudData() {
+  try {
+    const res = await fetch(API_URL);
+    if (!res.ok) throw new Error();
+    records = await res.json();
+    
+    // Update UI
+    document.getElementById('syncDot').className = "dot online";
+    document.getElementById('syncText').innerText = "Cloud Connected";
+    renderAll();
+  } catch (e) {
+    document.getElementById('syncDot').className = "dot";
+    document.getElementById('syncText').innerText = "Offline/Error";
+  }
+}
+
+async function submitEntry() {
+  const job = document.getElementById('jobcardInput').value.trim();
+  const type = document.getElementById('typeSelect').value;
+  if (!job || !type) return alert("Fill all fields");
+
+  const payload = {
+    jobcard: job,
+    type: type,
+    timestamp: document.getElementById('createdAt').value,
+    todayFollow: document.getElementById('followDate').value,
+    status: "Active",
+    origDate: document.getElementById('followDate').value // Initial follow date
+  };
+
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      resetForm();
+      fetchCloudData();
+    }
+  } catch (e) { alert("Save failed"); }
+}
+
+async function removeRecord(jobcard) {
+  if (!confirm(`Permanently delete Jobcard ${jobcard}?`)) return;
+  try {
+    await fetch(`${API_URL}?jobcard=${jobcard}`, { method: "DELETE" });
+    fetchCloudData();
+  } catch (e) { alert("Delete failed"); }
+}
+
+// --- UI HELPERS ---
+
+function renderAll() {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = "";
+  
+  // Filter active only
+  const active = records.filter(r => r.status === 'Active');
+  
+  active.forEach(r => {
+    tbody.innerHTML += `
+      <tr>
+        <td><b>${r.jobcard}</b></td>
+        <td>${r.type}</td>
+        <td>${r.todayFollow}</td>
+        <td style="text-align:right">
+          <button class="btn btn-danger" onclick="removeRecord('${r.jobcard}')"><i class="fa fa-trash"></i></button>
+        </td>
+      </tr>`;
+  });
+
+  // KPIs
+  document.getElementById('kpiTotal').innerText = active.length;
+  document.getElementById('kpiTypes').innerText = [...new Set(active.map(r => r.type))].length;
+  
+  const now = new Date().toLocaleDateString('en-GB');
+  document.getElementById('kpiToday').innerText = active.filter(r => r.todayFollow.startsWith(now)).length;
+}
+
+function autoFollowDate() {
+  const type = document.getElementById('typeSelect').value;
+  if (!type) return;
+  const d = new Date();
+  d.setDate(d.getDate() + (FOLLOW_DAYS[type] || 0));
+  
+  const pad = n => n.toString().padStart(2, '0');
+  document.getElementById('followDate').value = 
+    `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} 09:00:00`;
+}
+
+function setCreatedTimeIfEmpty() {
+  const el = document.getElementById('createdAt');
+  if (!el.value) {
+    const d = new Date();
+    const pad = n => n.toString().padStart(2, '0');
+    el.value = `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  }
+}
+
+function checkDuplicate() {
+  const job = document.getElementById('jobcardInput').value.trim();
+  document.getElementById('dupWarn').style.display = records.some(r => r.jobcard === job) ? "block" : "none";
+}
+
+function resetForm() {
+  document.getElementById('jobcardInput').value = "";
+  document.getElementById('typeSelect').value = "";
+  document.getElementById('createdAt').value = "";
+  document.getElementById('followDate').value = "";
+  document.getElementById('dupWarn').style.display = "none";
+}
+
+function exportExcel() {
+  const ws = XLSX.utils.json_to_sheet(records);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "CloudData");
+  XLSX.writeFile(wb, "Cloud_FollowUp_Export.xlsx");
+}
+
+// Initial Load & Auto-Refresh (Every 30s)
+fetchCloudData();
+setInterval(fetchCloudData, 30000);
+
+</script>
+</body>
+</html>

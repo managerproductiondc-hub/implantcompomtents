@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>P4 | Completed (Cloud Sync)</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<style>
+:root{
+  --primary:#2563eb;
+  --primary-dark:#1e40af;
+  --bg:#f8fafc;
+  --card:#ffffff;
+  --border:#e5e7eb;
+  --text:#0f172a;
+  --muted:#64748b;
+  --success:#10b981;
+  --radius:14px;
+  --shadow:0 10px 25px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Inter,system-ui;
+  background:linear-gradient(180deg,#eef5ff,#f8fafc);
+  color:var(--text);
+}
+.app{display:flex;min-height:100vh}
+
+/* SIDEBAR */
+.sidebar{
+  width:270px;
+  background:linear-gradient(180deg,var(--primary),var(--primary-dark));
+  color:#fff;
+  padding:24px 18px;
+}
+.brand{display:flex;gap:12px;align-items:center;margin-bottom:30px}
+.logo{
+  width:44px;height:44px;border-radius:12px;
+  background:#fff;color:var(--primary);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:20px;
+}
+.nav a{
+  display:flex;gap:12px;align-items:center;
+  padding:12px 14px;border-radius:10px;
+  text-decoration:none;color:#fff;font-weight:600;
+  opacity:.85;margin-bottom:4px;
+}
+.nav a.active,.nav a:hover{background:rgba(255,255,255,.2);opacity:1}
+
+/* MAIN */
+.main{flex:1;padding:26px;overflow:auto}
+.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
+.page-title{font-size:22px;font-weight:800}
+
+.sync-status{
+  display:flex;align-items:center;gap:8px;
+  background:#fff;padding:6px 14px;border-radius:30px;
+  border:1px solid var(--border);font-size:12px;font-weight:600;
+}
+.dot{width:8px;height:8px;border-radius:50%;background:#cbd5e1}
+.dot.online{background:var(--success);box-shadow:0 0 8px var(--success)}
+
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px}
+.kpi{background:var(--card);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+.kpi h4{margin:0;font-size:13px;color:var(--muted)}
+.kpi .val{font-size:28px;font-weight:800;margin-top:6px;color:var(--success)}
+
+.card{background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.table-wrap{border:1px solid var(--border);border-radius:12px;overflow:auto}
+table{width:100%;border-collapse:collapse}
+thead th{background:#f1f5f9;padding:14px;font-size:13px;color:var(--muted);text-align:left}
+tbody td{padding:14px;border-top:1px solid var(--border);font-size:14px}
+
+.btn-ghost{background:#f1f5f9;color:var(--primary);padding:8px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:700;}
+
+@media(max-width:1100px){ .kpis{grid-template-columns:repeat(2,1fr)} }
+</style>
+</head>
+
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">P1</div>
+      <div><div style="font-weight:700">Follow-Up</div><div style="font-size:12px;opacity:.8">Control</div></div>
+    </div>
+    <nav class="nav">
+      <a href="index.html"><i class="fa fa-plus"></i> New Entry</a>
+      <a href="page2.html"><i class="fa fa-list-check"></i> Working Summary</a>
+      <a href="page3.html"><i class="fa fa-chart-line"></i> Analytics</a>
+      <a class="active" href="page4.html"><i class="fa fa-check-circle"></i> Completed</a>
+      <a href="page5.html"><i class="fa fa-triangle-exclamation"></i> Backlogs</a>
+      <a href="page6.html"><i class="fa fa-cubes"></i> WallDrop</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="page-header">
+      <div class="page-title">Completed Jobs (Cloud)</div>
+      <div class="sync-status">
+        <div id="syncDot" class="dot"></div>
+        <span id="syncText">Syncing...</span>
+      </div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><h4>Total Done</h4><div class="val" id="kTotal">0</div></div>
+      <div class="kpi"><h4>Today</h4><div class="val" id="kToday">0</div></div>
+      <div class="kpi"><h4>This Week</h4><div class="val" id="kWeek">0</div></div>
+      <div class="kpi"><h4>This Month</h4><div class="val" id="kMonth">0</div></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;margin-bottom:15px">
+        <h3 style="margin:0">History</h3>
+        <button class="btn-ghost" onclick="exportExcel()"><i class="fa fa-file-excel"></i> Export History</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Jobcard</th>
+              <th>Type</th>
+              <th>Original Date</th>
+              <th>Completion Date</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const API_URL = "/api";
+let records = [];
+
+function parseDate(str){
+  if(!str) return null;
+  const p = str.split(" ")[0].split("/");
+  return new Date(p[2], p[1]-1, p[0]);
+}
+
+async function fetchCompletedData() {
+  try {
+    const res = await fetch(API_URL);
+    const allData = await res.json();
+    // Only show Completed jobs on this page
+    records = allData.filter(r => r.status === 'Completed');
+    
+    document.getElementById('syncDot').className = "dot online";
+    document.getElementById('syncText').innerText = "Cloud Synced";
+    render();
+  } catch (e) {
+    document.getElementById('syncDot').className = "dot";
+    document.getElementById('syncText').innerText = "Sync Error";
+  }
+}
+
+function render() {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = "";
+  
+  const now = new Date();
+  const todayStart = new Date(now); todayStart.setHours(0,0,0,0);
+  
+  let today = 0, week = 0, month = 0;
+
+  records.forEach(r => {
+    const compD = parseDate(r.completedAt);
+    if (compD) {
+      if (compD >= todayStart) today++;
+      if ((now - compD) / (1000 * 60 * 60 * 24) <= 7) week++;
+      if (compD.getMonth() === now.getMonth() && compD.getFullYear() === now.getFullYear()) month++;
+    }
+
+    tbody.innerHTML += `
+      <tr>
+        <td><b>${r.jobcard}</b></td>
+        <td>${r.type}</td>
+        <td>${r.origDate || r.todayFollow || "-"}</td>
+        <td>${r.completedAt || "-"}</td>
+      </tr>`;
+  });
+
+  document.getElementById('kTotal').innerText = records.length;
+  document.getElementById('kToday').innerText = today;
+  document.getElementById('kWeek').innerText = week;
+  document.getElementById('kMonth').innerText = month;
+}
+
+function exportExcel() {
+  const ws = XLSX.utils.json_to_sheet(records);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Completed_History");
+  XLSX.writeFile(wb, "Completed_FollowUps_Cloud.xlsx");
+}
+
+// Initial fetch & Auto-refresh (Every 60 seconds is enough for history)
+fetchCompletedData();
+setInterval(fetchCompletedData, 60000);
+</script>
+</body>
+</html>

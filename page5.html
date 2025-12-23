@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>P5 | Backlogs (Cloud Sync)</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<style>
+:root{
+  --primary:#2563eb;
+  --primary-dark:#1e40af;
+  --bg:#f8fafc;
+  --card:#ffffff;
+  --border:#e5e7eb;
+  --text:#0f172a;
+  --muted:#64748b;
+  --danger:#dc2626;
+  --warning:#f59e0b;
+  --radius:14px;
+  --shadow:0 10px 25px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Inter,system-ui;
+  background:linear-gradient(180deg,#fff1f1,#f8fafc);
+  color:var(--text);
+}
+.app{display:flex;min-height:100vh}
+
+/* SIDEBAR */
+.sidebar{
+  width:270px;
+  background:linear-gradient(180deg,var(--primary),var(--primary-dark));
+  color:#fff;
+  padding:24px 18px;
+}
+.brand{display:flex;gap:12px;align-items:center;margin-bottom:30px}
+.logo{
+  width:44px;height:44px;border-radius:12px;
+  background:#fff;color:var(--primary);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:20px;
+}
+.nav a{
+  display:flex;gap:12px;align-items:center;
+  padding:12px 14px;border-radius:10px;
+  text-decoration:none;color:#fff;font-weight:600;
+  opacity:.85;margin-bottom:4px;
+}
+.nav a.active,.nav a:hover{background:rgba(255,255,255,.2);opacity:1}
+
+/* MAIN */
+.main{flex:1;padding:26px;overflow:auto}
+.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
+.page-title{font-size:22px;font-weight:800;color:var(--danger)}
+
+.sync-status{
+  display:flex;align-items:center;gap:8px;
+  background:#fff;padding:6px 14px;border-radius:30px;
+  border:1px solid var(--border);font-size:12px;font-weight:600;
+}
+.dot{width:8px;height:8px;border-radius:50%;background:#cbd5e1}
+.dot.online{background:var(--danger);box-shadow:0 0 8px var(--danger)}
+
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px}
+.kpi{background:var(--card);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+.kpi h4{margin:0;font-size:13px;color:var(--muted)}
+.kpi .val{font-size:28px;font-weight:800;margin-top:6px}
+
+.card{background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.table-wrap{border:1px solid var(--border);border-radius:12px;overflow:auto}
+table{width:100%;border-collapse:collapse;min-width:900px}
+thead th{background:#fef2f2;padding:14px;font-size:13px;color:var(--danger);text-align:left}
+tbody td{padding:14px;border-top:1px solid var(--border);font-size:14px}
+
+.badge{padding:4px 10px;border-radius:6px;font-weight:800;font-size:11px;text-transform:uppercase}
+.badge-warn{background:#fff7ed;color:var(--warning)}
+.badge-danger{background:#fef2f2;color:var(--danger)}
+
+@media(max-width:1100px){ .kpis{grid-template-columns:repeat(2,1fr)} }
+</style>
+</head>
+
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">P1</div>
+      <div><div style="font-weight:700">Follow-Up</div><div style="font-size:12px;opacity:.8">Control</div></div>
+    </div>
+    <nav class="nav">
+      <a href="index.html"><i class="fa fa-plus"></i> New Entry</a>
+      <a href="page2.html"><i class="fa fa-list-check"></i> Working Summary</a>
+      <a href="page3.html"><i class="fa fa-chart-line"></i> Analytics</a>
+      <a href="page4.html"><i class="fa fa-check-circle"></i> Completed</a>
+      <a class="active" href="page5.html"><i class="fa fa-triangle-exclamation"></i> Backlogs</a>
+      <a href="page6.html"><i class="fa fa-cubes"></i> WallDrop</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="page-header">
+      <div class="page-title">Backlog Analysis (Cloud)</div>
+      <div class="sync-status">
+        <div id="syncDot" class="dot"></div>
+        <span id="syncText">Syncing...</span>
+      </div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><h4>Total Backlogs</h4><div class="val" id="kTotal" style="color:var(--danger)">0</div></div>
+      <div class="kpi"><h4>> 30 Days</h4><div class="val" id="k30" style="color:var(--warning)">0</div></div>
+      <div class="kpi"><h4>> 45 Days</h4><div class="val" id="k45" style="color:var(--danger)">0</div></div>
+      <div class="kpi"><h4>> 60 Days</h4><div class="val" id="k60" style="color:#7f1d1d">0</div></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;margin-bottom:15px">
+        <h3 style="margin:0">Aging Report</h3>
+        <button class="btn" style="background:#f1f5f9;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:700" onclick="exportExcel()">
+          <i class="fa fa-file-excel"></i> Export Backlogs
+        </button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Jobcard</th>
+              <th>Type</th>
+              <th>Original Date</th>
+              <th>Next Follow-Up</th>
+              <th>Postponed</th>
+              <th>Aging (Days)</th>
+              <th>Severity</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const API_URL = "/api";
+let records = [];
+
+function parseDate(str){
+  if(!str) return null;
+  const p = str.split(" ")[0].split("/");
+  return new Date(p[2], p[1]-1, p[0]);
+}
+
+function diffDays(d1) {
+  const now = new Date();
+  now.setHours(0,0,0,0);
+  return Math.floor((now - d1) / (1000 * 60 * 60 * 24));
+}
+
+async function fetchBacklogData() {
+  try {
+    const res = await fetch(API_URL);
+    const all = await res.json();
+    // Filter for Active/Postponed jobs that are behind original schedule
+    records = all.filter(r => r.status !== 'Completed');
+    
+    document.getElementById('syncDot').className = "dot online";
+    document.getElementById('syncText').innerText = "Cloud Synced";
+    render();
+  } catch (e) {
+    document.getElementById('syncDot').className = "dot";
+    document.getElementById('syncText').innerText = "Sync Error";
+  }
+}
+
+function render() {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = "";
+  
+  let gt30=0, gt45=0, gt60=0, total=0;
+
+  records.forEach(r => {
+    const base = parseDate(r.origDate || r.todayFollow);
+    if (!base) return;
+
+    const days = diffDays(base);
+    if (days <= 0) return; // Not a backlog yet
+
+    total++;
+    if(days > 30) gt30++;
+    if(days > 45) gt45++;
+    if(days > 60) gt60++;
+
+    let sev = "Moderate", badge = "badge-warn";
+    if(days > 45) { sev = "Critical"; badge = "badge-danger"; }
+
+    tbody.innerHTML += `
+      <tr>
+        <td><b>${r.jobcard}</b></td>
+        <td>${r.type}</td>
+        <td>${r.origDate || "-"}</td>
+        <td>${r.todayFollow}</td>
+        <td>${r.postponeIndex || 0} times</td>
+        <td><b style="color:var(--danger)">${days} days</b></td>
+        <td><span class="badge ${badge}">${sev}</span></td>
+      </tr>`;
+  });
+
+  document.getElementById('kTotal').innerText = total;
+  document.getElementById('k30').innerText = gt30;
+  document.getElementById('k45').innerText = gt45;
+  document.getElementById('k60').innerText = gt60;
+}
+
+function exportExcel() {
+  const ws = XLSX.utils.json_to_sheet(records);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Backlogs");
+  XLSX.writeFile(wb, "Cloud_Backlog_Report.xlsx");
+}
+
+fetchBacklogData();
+setInterval(fetchBacklogData, 60000);
+</script>
+</body>
+</html>

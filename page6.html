@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>P6 | WallDrop (Cloud Sync)</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<style>
+:root{
+  --primary:#2563eb;
+  --primary-dark:#1e40af;
+  --bg:#f8fafc;
+  --card:#ffffff;
+  --border:#e5e7eb;
+  --text:#0f172a;
+  --muted:#64748b;
+  --success:#10b981;
+  --warning:#f59e0b;
+  --orange:#f97316;
+  --danger:#ef4444;
+  --radius:14px;
+  --shadow:0 10px 25px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Inter,system-ui;
+  background:var(--bg);
+  color:var(--text);
+}
+.app{display:flex;min-height:100vh}
+
+/* SIDEBAR */
+.sidebar{
+  width:270px;
+  background:linear-gradient(180deg,var(--primary),var(--primary-dark));
+  color:#fff;
+  padding:24px 18px;
+}
+.brand{display:flex;gap:12px;align-items:center;margin-bottom:30px}
+.logo{
+  width:44px;height:44px;border-radius:12px;
+  background:#fff;color:var(--primary);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:20px;
+}
+.nav a{
+  display:flex;gap:12px;align-items:center;
+  padding:12px 14px;border-radius:10px;
+  text-decoration:none;color:#fff;font-weight:600;
+  opacity:.85;margin-bottom:4px;
+}
+.nav a.active,.nav a:hover{background:rgba(255,255,255,.2);opacity:1}
+
+/* MAIN */
+.main{flex:1;padding:26px;overflow:auto}
+.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
+.page-title{font-size:22px;font-weight:800}
+
+.sync-status{
+  display:flex;align-items:center;gap:8px;
+  background:#fff;padding:6px 14px;border-radius:30px;
+  border:1px solid var(--border);font-size:12px;font-weight:600;
+}
+.dot{width:8px;height:8px;border-radius:50%;background:#cbd5e1}
+.dot.online{background:var(--success);box-shadow:0 0 8px var(--success)}
+
+/* WALL GRID */
+.wall{display:flex;flex-direction:column;gap:30px}
+.row-label{font-weight:800;font-size:14px;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px}
+.rack-row{display:grid;grid-template-columns:repeat(auto-fill, minmax(110px, 1fr));gap:12px}
+
+.rack{
+  background:var(--card);
+  border:2px solid var(--border);
+  border-radius:12px;
+  padding:15px 10px;
+  text-align:center;
+  cursor:pointer;
+  transition:0.2s;
+  position:relative;
+}
+.rack:hover{border-color:var(--primary);transform:translateY(-3px);box-shadow:var(--shadow)}
+.rack.has-data{border-color:var(--primary);background:#f0f7ff}
+.rack-num{font-size:10px;font-weight:700;color:var(--muted);margin-bottom:4px}
+.rack-count{font-size:22px;font-weight:800;color:var(--primary)}
+.rack-label{font-size:11px;font-weight:600;margin-top:4px}
+
+/* MODAL */
+.modal{
+  position:fixed;inset:0;background:rgba(15,23,42,0.7);
+  display:none;align-items:center;justify-content:center;padding:20px;z-index:100;
+}
+.modal-content{
+  background:#fff;width:100%;max-width:600px;
+  border-radius:20px;padding:25px;max-height:85vh;overflow:auto;
+}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:12px;background:#f8fafc;font-size:12px;color:var(--muted)}
+td{padding:12px;border-top:1px solid var(--border);font-size:13px}
+</style>
+</head>
+
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">P1</div>
+      <div><div style="font-weight:700">Follow-Up</div><div style="font-size:12px;opacity:.8">Control</div></div>
+    </div>
+    <nav class="nav">
+      <a href="index.html"><i class="fa fa-plus"></i> New Entry</a>
+      <a href="page2.html"><i class="fa fa-list-check"></i> Working Summary</a>
+      <a href="page3.html"><i class="fa fa-chart-line"></i> Analytics</a>
+      <a href="page4.html"><i class="fa fa-check-circle"></i> Completed</a>
+      <a href="page5.html"><i class="fa fa-triangle-exclamation"></i> Backlogs</a>
+      <a class="active" href="page6.html"><i class="fa fa-cubes"></i> WallDrop</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="page-header">
+      <div class="page-title">WallDrop (Virtual Racks)</div>
+      <div class="sync-status">
+        <div id="syncDot" class="dot"></div>
+        <span id="syncText">Syncing...</span>
+      </div>
+    </div>
+
+    <div id="wall" class="wall"></div>
+  </main>
+</div>
+
+<div id="modal" class="modal" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div>
+        <h2 id="mTitle" style="margin:0;font-size:18px"></h2>
+        <p id="mSub" style="margin:5px 0 0 0;font-size:13px;color:var(--muted)"></p>
+      </div>
+      <button class="btn-ghost" onclick="document.getElementById('modal').style.display='none'" style="border:none;background:none;font-size:20px;cursor:pointer">&times;</button>
+    </div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+const API_URL = "/api";
+let records = [];
+
+const TYPES = [
+  "METAL", "SPECIAL BITE BLOCK", "BITE BLOCK", "SPECIAL TRAY", "JIG",
+  "TEETH SETTING WITH FRAME", "TEETH SET", "BODY TRIAL",
+  "ABUTMENT MILLING TRIAL", "RESINTRVAL", "COMPONENTS"
+];
+
+// Rack capacities per row for the virtual wall
+const RACK_CONFIG = [
+  { label: "Rack 1-10", cap: 10 },
+  { label: "Rack 11-20", cap: 10 },
+  { label: "Rack 21-30", cap: 10 }
+];
+
+async function loadWallData() {
+  try {
+    const res = await fetch(API_URL);
+    const data = await res.json();
+    // Only show Active/Postponed on the wall
+    records = data.filter(r => r.status !== 'Completed');
+    
+    document.getElementById('syncDot').className = "dot online";
+    document.getElementById('syncText').innerText = "Live Racks";
+    renderWall();
+  } catch (e) {
+    document.getElementById('syncDot').className = "dot";
+  }
+}
+
+function renderWall() {
+  const wall = document.getElementById('wall');
+  wall.innerHTML = "";
+
+  TYPES.forEach(type => {
+    const typeItems = records.filter(r => r.type === type);
+    if(typeItems.length === 0) return;
+
+    let html = `<div><div class="row-label">${type}</div><div class="rack-row">`;
+    
+    RACK_CONFIG.forEach((config, idx) => {
+      // Logic: Slice the data based on index
+      const start = idx * config.cap;
+      const end = start + config.cap;
+      const itemsInRack = typeItems.slice(start, end);
+      
+      html += `
+        <div class="rack ${itemsInRack.length > 0 ? 'has-data' : ''}" onclick="openRack('${type}', ${idx}, ${start}, ${end})">
+          <div class="rack-num">SECTION ${idx + 1}</div>
+          <div class="rack-count">${itemsInRack.length}</div>
+          <div class="rack-label">JOBS</div>
+        </div>`;
+    });
+
+    html += `</div></div>`;
+    wall.innerHTML += html;
+  });
+}
+
+function openRack(type, rackIdx, start, end) {
+  const items = records.filter(r => r.type === type).slice(start, end);
+  
+  document.getElementById('mTitle').innerText = `${type} - Section ${rackIdx + 1}`;
+  document.getElementById('mSub').innerText = `Viewing jobs ${start + 1} to ${end}`;
+  
+  const body = document.getElementById('modalBody');
+  if(items.length === 0) {
+    body.innerHTML = "<p style='color:var(--muted)'>This section is currently empty.</p>";
+  } else {
+    body.innerHTML = `
+      <table>
+        <thead>
+          <tr><th>Jobcard</th><th>Follow Date</th><th>Stage</th></tr>
+        </thead>
+        <tbody>
+          ${items.map(r => `
+            <tr>
+              <td><b>${r.jobcard}</b></td>
+              <td>${r.todayFollow}</td>
+              <td><span class="rack-badge">S-${r.postponeIndex || 0}</span></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+  document.getElementById('modal').style.display = 'flex';
+}
+
+// Initial Sync & Auto-refresh
+loadWallData();
+setInterval(loadWallData, 30000);
+
+</script>
+</body>
+</html>
